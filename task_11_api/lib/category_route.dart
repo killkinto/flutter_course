@@ -7,6 +7,8 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
+// TODO: Import necessary package
+import 'api.dart';
 import 'backdrop.dart';
 import 'category.dart';
 import 'category_tile.dart';
@@ -71,7 +73,6 @@ class _CategoryRouteState extends State<CategoryRoute> {
       'error': Color(0xFF912D2D),
     }),
   ];
-  // TODO: Add image asset paths here
   static const _icons = <String>[
     'assets/icons/length.png',
     'assets/icons/area.png',
@@ -88,8 +89,12 @@ class _CategoryRouteState extends State<CategoryRoute> {
     super.didChangeDependencies();
     // We have static unit conversions located in our
     // assets/data/regular_units.json
+    // and we want to also obtain up-to-date Currency conversions from the web
+    // We only want to load our data in once
     if (_categories.isEmpty) {
       await _retrieveLocalCategories();
+      // TODO: Call _retrieveApiCategory() here
+      await _retrieveApiCategory();
     }
   }
 
@@ -97,8 +102,7 @@ class _CategoryRouteState extends State<CategoryRoute> {
   Future<void> _retrieveLocalCategories() async {
     // Consider omitting the types for local variables. For more details on Effective
     // Dart Usage, see https://www.dartlang.org/guides/language/effective-dart/usage
-    final json = DefaultAssetBundle
-        .of(context)
+    final json = DefaultAssetBundle.of(context)
         .loadString('assets/data/regular_units.json');
     final data = JsonDecoder().convert(await json);
     if (data is! Map) {
@@ -113,7 +117,6 @@ class _CategoryRouteState extends State<CategoryRoute> {
         name: key,
         units: units,
         color: _baseColors[categoryIndex],
-        // TODO: Replace the placeholder icon with an icon image path
         iconLocation: _icons[categoryIndex],
       );
       setState(() {
@@ -124,6 +127,34 @@ class _CategoryRouteState extends State<CategoryRoute> {
       });
       categoryIndex += 1;
     });
+  }
+
+  // TODO: Add the Currency Category retrieved from the API, to our _categories
+  /// Retrieves a [Category] and its [Unit]s from an API on the web
+  Future<void> _retrieveApiCategory() async {
+    setState(() {
+      _categories.add(Category(
+          name: apiCategory['name'],
+          color: _baseColors.last,
+          units: [],
+          iconLocation: _icons.last));
+    });
+    final api = Api();
+    final jsonUnits = await api.getUnits(apiCategory['route']);
+    if (jsonUnits != null) {
+      final units = <Unit>[];
+      for (var unit in jsonUnits) {
+        units.add(Unit.fromJson(unit));
+      }
+      setState(() {
+        _categories.removeLast();
+        _categories.add(Category(
+            name: apiCategory['name'],
+            color: _baseColors.last,
+            units: units,
+            iconLocation: _icons.last));
+      });
+    }
   }
 
   /// Function to call when a [Category] is tapped.
